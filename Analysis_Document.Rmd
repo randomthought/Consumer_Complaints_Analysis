@@ -1,0 +1,61 @@
+```{r}
+require(ggplot2)
+require(dplyr)
+require(scales)
+require(googleVis)
+require(RCurl)
+require(zipcode)
+require(ggmap)
+require(RCurl)
+data(zipcode)
+```
+```{r include=FALSE}
+#Consumer_Complaints <- read.csv(file = "https://data.consumerfinance.gov/api/views/x94z-ydhh/rows.csv?accessType=DOWNLOAD")
+Consumer_Complaints <- read.csv(file = 'data//Consumer_Complaints.csv')
+Consumer_Complaints <- tbl_df(Consumer_Complaints)
+
+# Format the date of the data and stats abbriviation
+Consumer_Complaints$Date.received <- as.Date(Consumer_Complaints$Date.received, "%m/%d/%Y")
+Consumer_Complaints$Date.sent.to.company <- as.Date(Consumer_Complaints$Date.received, "%m/%d/%Y")
+
+Consumer_Complaints$State <- state.name[match(Consumer_Complaints$State, state.abb)] # State abb to full names
+
+Consumer_Complaints$Month <- as.Date(cut(Consumer_Complaints$Date.received,
+                                         breaks = "month"))
+
+Consumer_Complaints$Year <- as.Date(cut(Consumer_Complaints$Date.received,
+                                        breaks = "year"))
+
+Consumer_Complaints$ZIP.code <- clean.zipcodes(Consumer_Complaints$ZIP.code)
+                                        
+```
+
+```{r include=FALSE}
+zip.cases <- Consumer_Complaints %>%
+                  select(ZIP.code, Product) %>%
+                  na.omit() %>%
+                  group_by(ZIP.code, Product) %>%
+                  summarise(cases = n()) %>%
+                  summarise(cases = n())
+
+# Change culum name to zip
+colnames(zip.cases)[1] <- 'zip'
+
+# Apply map location to zip code
+zip.cases <- merge(zip.cases, zipcode, by.x = 'zip', by.y = 'zip')
+
+# Download map
+map <- get_map(location='united states', zoom=4, maptype = "terrain",
+             source='google',color='color')
+
+
+```
+Analysing cases based on the zip codes privided in the data to visually determin if they are any places in the country that complains are most freaquesnt
+
+```{r echo=FALSE}
+ggmap(map) + geom_point(
+  aes(x = longitude, y = latitude, show_guide = TRUE, colour = cases), 
+  data = zip.cases, alpha = .5, na.rm = T)  + 
+  scale_color_gradient(low = "beige", high = "blue")
+```
+
