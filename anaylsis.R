@@ -3,6 +3,7 @@ require(dplyr)
 require(scales)
 require(googleVis)
 require(RCurl)
+require(data.table)
 require(zipcode)
 require(ggmap)
 require(lubridate)
@@ -69,10 +70,11 @@ plotObervation(issueFrame("Fraud or scam"))
 
 monthData <- tempData %>%
                 arrange(Month.received.num) %>%
-                select(Month.received) %>%
-                group_by(month = Month.received) %>%
+                select(Month.received.num) %>%
+                group_by(month = Month.received.num) %>%
                 summarise(cases = n()) %>%
                 ggvis(x = ~month, y = ~cases) %>% layer_bars()
+
             
 monthData <- tempData %>%
                 arrange(Month.received.num) %>%
@@ -85,6 +87,8 @@ yearData <- tempData %>%
                 select(Year.received) %>%
                 group_by(year = Year.received) %>%
                 summarise(cases = n()) %>%
-                ggvis(x = ~year, y = ~cases) %>% layer_bars()
+                filter(year != 2015) %>%
+                ggvis(x = ~year, y = ~cases) %>%
+                layer_bars() 
 
 

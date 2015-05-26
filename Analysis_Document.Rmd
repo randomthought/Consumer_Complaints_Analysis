@@ -1,61 +1,117 @@
-```{r}
+---
+output: html_document
+---
+```{r message=FALSE}
 require(ggplot2)
 require(dplyr)
 require(scales)
 require(googleVis)
 require(RCurl)
+require(data.table)
 require(zipcode)
 require(ggmap)
-require(RCurl)
+require(lubridate)
+require(ggvis)
 data(zipcode)
 ```
 ```{r include=FALSE}
-#Consumer_Complaints <- read.csv(file = "https://data.consumerfinance.gov/api/views/x94z-ydhh/rows.csv?accessType=DOWNLOAD")
-Consumer_Complaints <- read.csv(file = 'data//Consumer_Complaints.csv')
-Consumer_Complaints <- tbl_df(Consumer_Complaints)
-
-# Format the date of the data and stats abbriviation
+Consumer_Complaints <- read.csv(file = 'C:\\Temp\\Git\\Consumer_Complaints_Analysis\\data\\Consumer_Complaints.csv')
+Consumer_Complaints <- tbl_dt(Consumer_Complaints)
 Consumer_Complaints$Date.received <- as.Date(Consumer_Complaints$Date.received, "%m/%d/%Y")
 Consumer_Complaints$Date.sent.to.company <- as.Date(Consumer_Complaints$Date.received, "%m/%d/%Y")
+tempData <- tbl_df(Consumer_Complaints)
 
-Consumer_Complaints$State <- state.name[match(Consumer_Complaints$State, state.abb)] # State abb to full names
+tempData$Year.received <- year(tempData$Date.received)
+tempData$Month.received <- months(tempData$Date.received)
+tempData$Month.received.num <- month(tempData$Date.received)
 
-Consumer_Complaints$Month <- as.Date(cut(Consumer_Complaints$Date.received,
-                                         breaks = "month"))
+# Pre adding dates to data 
 
-Consumer_Complaints$Year <- as.Date(cut(Consumer_Complaints$Date.received,
-                                        breaks = "year"))
 
-Consumer_Complaints$ZIP.code <- clean.zipcodes(Consumer_Complaints$ZIP.code)
-                                        
+# Fields
+map <- get_map(location='united states', zoom = 4, maptype = "terrain",
+               source='google',color='color')
+
+# Functions
+plotObervation <- function(dataframe){
+  
+  colnames(dataframe)[1] <- 'zip'
+  
+  dataframe <- merge(dataframe, zipcode, by.x = 'zip', by.y = 'zip')
+  
+  ggmap(map) + geom_point(
+    aes(x = longitude, y = latitude, show_guide = TRUE, colour = cases), 
+    data = dataframe, alpha = .5, na.rm = T)  + 
+    scale_color_gradient(low = "beige", high = "blue")
+}
+
+issueFrame <- function(issue){
+  
+  tempData %>%
+    select(ZIP.code, Issue) %>%
+    na.omit() %>%
+    filter(Issue == issue) %>%
+    group_by(ZIP.code, Issue) %>%
+    summarise(cases = n()) %>%
+    summarise(cases = n())
+
+}                                      
+```
+Analyziz Identity theft activity around the united states
+```{r message=FALSE}
+plotObervation(issueFrame("Identity theft / Fraud / Embezzlement"))
+
 ```
 
-```{r include=FALSE}
-zip.cases <- Consumer_Complaints %>%
-                  select(ZIP.code, Product) %>%
-                  na.omit() %>%
-                  group_by(ZIP.code, Product) %>%
-                  summarise(cases = n()) %>%
-                  summarise(cases = n())
+Time series analysis
 
-# Change culum name to zip
-colnames(zip.cases)[1] <- 'zip'
+Complains are more common during the first 4 months of the year
+```{r message=FALSE}
 
-# Apply map location to zip code
-zip.cases <- merge(zip.cases, zipcode, by.x = 'zip', by.y = 'zip')
-
-# Download map
-map <- get_map(location='united states', zoom=4, maptype = "terrain",
-             source='google',color='color')
-
-
+tempData %>%
+                arrange(Month.received.num) %>%
+                select(Month.received.num) %>%
+                group_by(month = Month.received.num) %>%
+                summarise(cases = n()) %>%
+                ggvis(x = ~month, y = ~cases) %>% layer_bars()
 ```
-Analysing cases based on the zip codes privided in the data to visually determin if they are any places in the country that complains are most freaquesnt
 
-```{r echo=FALSE}
-ggmap(map) + geom_point(
-  aes(x = longitude, y = latitude, show_guide = TRUE, colour = cases), 
-  data = zip.cases, alpha = .5, na.rm = T)  + 
-  scale_color_gradient(low = "beige", high = "blue")
+Complains have been increasing yearly. (We are still early into 2015)
+
+```{r Message=FALSE}
+tempData %>%
+                select(Year.received) %>%
+                group_by(year = Year.received) %>%
+                summarise(cases = n()) %>%
+                filter(year != 2015) %>%
+                ggvis(x = ~year, y = ~cases) %>%
+                layer_bars()
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
